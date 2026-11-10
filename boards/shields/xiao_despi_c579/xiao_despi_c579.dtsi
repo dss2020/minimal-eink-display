@@ -1,0 +1,45 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Good Display DESPI-C579 adapter wired to a Seeed XIAO header:
+ *
+ *   SCK  -> D8  (SPI SCK)
+ *   SDI  -> D10 (SPI MOSI)
+ *   CS   -> D3
+ *   D/C  -> D2
+ *   RES  -> D1
+ *   BUSY -> D0
+ *
+ * The panel overlays set the compatible of the despi_c579_panel node.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	chosen {
+		zephyr,display = &despi_c579_panel;
+	};
+
+	mipi_dbi_despi_c579 {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&xiao_spi>;
+		dc-gpios = <&xiao_d 2 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&xiao_d 1 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		despi_c579_panel: panel@0 {
+			reg = <0>;
+			mipi-max-frequency = <4000000>;
+			width = <792>;
+			height = <272>;
+			busy-gpios = <&xiao_d 0 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&xiao_spi {
+	status = "okay";
+	cs-gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+};

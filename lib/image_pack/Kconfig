@@ -4,7 +4,7 @@ menuconfig IMAGE_PACK
 	bool "Embedded e-ink image pack"
 	help
 	  Convert the pictures in IMAGE_PACK_SOURCE_DIR at build time into a compact
-	  1-bit image pack of IMAGE_PACK_WIDTH x IMAGE_PACK_HEIGHT pixels, link it into the
+	  image pack of IMAGE_PACK_WIDTH x IMAGE_PACK_HEIGHT pixels, link it into the
 	  firmware as read-only data and expose it through <eink/image_pack.h>.
 	  Requires Python with Pillow on the build host.
 
@@ -23,6 +23,28 @@ config IMAGE_PACK_HEIGHT
 	help
 	  Height of the picture as seen by the viewer. Normally set by the
 	  display shield or board.
+
+choice IMAGE_PACK_FORMAT
+	prompt "Picture colour format"
+	default IMAGE_PACK_FORMAT_MONO
+	help
+	  Colours the pictures are converted to. Normally set by the display
+	  shield or board to match the panel.
+
+config IMAGE_PACK_FORMAT_MONO
+	bool "Black/white, 1 bit per pixel"
+
+config IMAGE_PACK_FORMAT_BWYR
+	bool "Black/white/yellow/red, 2 bits per pixel"
+	help
+	  Stored as palette indices: 0 black, 1 white, 2 yellow, 3 red.
+
+endchoice # IMAGE_PACK_FORMAT
+
+config IMAGE_PACK_BPP
+	int
+	default 2 if IMAGE_PACK_FORMAT_BWYR
+	default 1
 
 config IMAGE_PACK_SOURCE_DIR
 	string "Source picture folder"

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_XIAO_DESPI_C579_GDEY0579F51 || SHIELD_XIAO_DESPI_C579_GDEY0579F52
+
+config IMAGE_PACK_WIDTH
+	default 792
+
+config IMAGE_PACK_HEIGHT
+	default 272
+
+choice IMAGE_PACK_FORMAT
+	default IMAGE_PACK_FORMAT_BWYR
+endchoice
+
+endif

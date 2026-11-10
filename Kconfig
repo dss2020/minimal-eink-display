@@ -2,6 +2,7 @@
 
 menu "Minimal e-ink display"
 
+rsource "drivers/Kconfig"
 rsource "lib/Kconfig"
 
 endmenu

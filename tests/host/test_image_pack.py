@@ -85,18 +85,21 @@ def test_packs(tmp: Path) -> list[tuple[Path, int, int]]:
     imgs.mkdir()
     make_images(imgs)
     packs = []
-    for w, h in ((400, 300), (122, 250)):
+    for w, h, fmt in ((400, 300, "mono"), (122, 250, "mono"),
+                      (792, 272, "bwyr"), (123, 50, "bwyr")):
+        bpp = gip.FORMAT_BPP[fmt]
         out = tmp / f"pack_{w}x{h}.bin"
         prev = tmp / f"prev_{w}x{h}"
-        r = run_gen(imgs, out, w, h, "--preview-dir", str(prev))
+        r = run_gen(imgs, out, w, h, "--format", fmt, "--preview-dir", str(prev))
         check(f"gen {w}x{h} exit 0", r.returncode == 0, r.stderr.strip())
         if r.returncode != 0:
             continue
         pack = out.read_bytes()
         info, entries = gip.parse_pack(pack)
-        check(f"{w}x{h} header", info == {"version": 1, "bpp": 1, "width": w,
+        check(f"{w}x{h} header", info == {"version": 1, "bpp": bpp, "width": w,
                                          "height": h, "count": 4}, str(info))
-        stride, raw = (w + 7) // 8, ((w + 7) // 8) * h
+        stride = (w * bpp + 7) // 8
+        raw = stride * h
         pos = 12 + 12 * 4
         ok = True
         for off, ln, m in entries:
@@ -111,9 +114,14 @@ def test_packs(tmp: Path) -> list[tuple[Path, int, int]]:
                                                 "002_c_portrait.png", "003_d_white.png"],
               str(previews))
         white = gip.decode_pack_frame(pack, 3)
-        check(f"{w}x{h} white image is all 0xFF", set(white) == {0xFF})
+        fill = 0xFF if bpp == 1 else 0x55
+        check(f"{w}x{h} white image is all 0x{fill:02X}", set(white) == {fill})
+        if fmt == "bwyr":
+            # red block of b_alpha: palette index 3 must appear, and only 0..3 packed
+            check(f"{w}x{h} red present", 0xFF in gip.decode_pack_frame(pack, 1))
         # contain/none options run
-        r2 = run_gen(imgs, tmp / "opt.bin", w, h, "--fit", "contain", "--dither", "none")
+        r2 = run_gen(imgs, tmp / "opt.bin", w, h, "--format", fmt, "--fit", "contain",
+                     "--dither", "none")
         check(f"{w}x{h} contain/none exit 0", r2.returncode == 0, r2.stderr.strip())
         packs.append((out, w, h))
     return packs
@@ -126,6 +134,9 @@ def test_empty(tmp: Path) -> None:
         out = tmp / "empty.bin"
         r = run_gen(d, out, 400, 300)
         check(f"{name}: exit 0", r.returncode == 0, r.stderr.strip())
+        rc = run_gen(d, tmp / "empty_bwyr.bin", 792, 272, "--format", "bwyr",
+                     "--preview-dir", str(tmp / "prev_empty_bwyr"))
+        check(f"{name}: bwyr placeholder exit 0", rc.returncode == 0, rc.stderr.strip())
         info, _ = gip.parse_pack(out.read_bytes())
         check(f"{name}: one frame", info["count"] == 1)
         check(f"{name}: warning on stderr", "warning" in r.stderr.lower())

@@ -38,7 +38,8 @@ int image_pack_get_info(struct image_pack_info *info);
 /**
  * @brief Get the size in bytes of one decoded frame.
  *
- * Rows are padded to whole bytes, MSB first, bit 1 = white.
+ * Rows are padded to whole bytes, first pixel in the most significant bits.
+ * 1 bpp: 1 = white. 2 bpp: palette index, 0 black, 1 white, 2 yellow, 3 red.
  *
  * @return Frame size in bytes, or 0 if the pack is invalid.
  */

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Good Display GDEY0579F51, 5.79 inch 792x272 black/white/yellow/red e-paper
+  panel with two cascaded controllers.
+
+compatible: "gooddisplay,gdey0579f51"
+
+include: gooddisplay,gdey0579f5x-common.yaml

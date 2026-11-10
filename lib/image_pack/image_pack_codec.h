@@ -7,11 +7,12 @@
  * @brief Portable image pack parser and decoder (no Zephyr dependencies).
  *
  * Pack format (all little-endian):
- *  - header, 12 bytes: magic "EIPK", version u8 (1), bpp u8 (1), width u16, height u16, count u16
+ *  - header, 12 bytes: magic "EIPK", version u8 (1), bpp u8 (1 or 2), width u16, height u16, count u16
  *  - @c count entries of 12 bytes: offset u32, length u32, method u8, 3 pad bytes
  *  - payloads
  *
- * A decoded frame is row-major, each row padded to a whole byte, MSB first, bit 1 = white.
+ * A decoded frame is row-major, each row padded to a whole byte, first pixel in the most
+ * significant bits. 1 bpp: 1 = white. 2 bpp: palette index, 0 black, 1 white, 2 yellow, 3 red.
  */
 
 #ifndef IMAGE_PACK_CODEC_H_

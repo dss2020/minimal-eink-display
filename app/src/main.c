@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -22,16 +23,17 @@
 
 LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
-#define FRAME_SIZE (DIV_ROUND_UP(CONFIG_IMAGE_PACK_WIDTH, 8) * CONFIG_IMAGE_PACK_HEIGHT)
+#define FRAME_STRIDE DIV_ROUND_UP(CONFIG_IMAGE_PACK_WIDTH * CONFIG_IMAGE_PACK_BPP, 8)
+#define FRAME_SIZE   (FRAME_STRIDE * CONFIG_IMAGE_PACK_HEIGHT)
 
 static const struct device *const display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
 static uint8_t frame[FRAME_SIZE];
 
 /*
- * E-paper drivers start a refresh and return while the panel is still busy.
- * The panel must not lose its controller mid-refresh, so wait on its busy
- * line, when the display node has one, before powering off.
+ * The ssd16xx driver starts a refresh and returns while the panel is still
+ * busy. The panel must not lose its controller mid-refresh, so wait on its
+ * busy line before powering off. Other drivers return when they are done.
  */
 #define REFRESH_START_MS   100
 #define REFRESH_POLL_MS    20
@@ -44,7 +46,7 @@ static void wait_refresh_done(void)
 {
 	int64_t end = k_uptime_get() + REFRESH_TIMEOUT_MS;
 
-	if (busy.port == NULL) {
+	if (!IS_ENABLED(CONFIG_SSD16XX) || busy.port == NULL) {
 		return;
 	}
 
@@ -100,7 +102,8 @@ static void state_save(uint32_t index)
 }
 #endif
 
-static int show_picture(uint16_t index)
+/* Monochrome picture: one write of the whole frame. */
+static int write_mono(const struct display_capabilities *caps)
 {
 	const struct display_buffer_descriptor desc = {
 		.buf_size = sizeof(frame),
@@ -108,6 +111,68 @@ static int show_picture(uint16_t index)
 		.height = CONFIG_IMAGE_PACK_HEIGHT,
 		.pitch = CONFIG_IMAGE_PACK_WIDTH,
 	};
+
+	/* Pictures are stored row by row, MSB first, 1 = white. */
+	if ((caps->screen_info & SCREEN_INFO_MONO_VTILED) != 0 ||
+	    (caps->screen_info & SCREEN_INFO_MONO_MSB_FIRST) == 0) {
+		LOG_ERR("Display bit layout is not supported");
+		return -ENOTSUP;
+	}
+
+	if (caps->current_pixel_format == PIXEL_FORMAT_MONO10) {
+		for (size_t i = 0; i < sizeof(frame); i++) {
+			frame[i] = ~frame[i];
+		}
+	} else if (caps->current_pixel_format != PIXEL_FORMAT_MONO01) {
+		LOG_ERR("Display is not monochrome");
+		return -ENOTSUP;
+	}
+
+	return display_write(display, 0, 0, &desc, frame);
+}
+
+/*
+ * Colour picture: stored at 2 bits per pixel, written a row at a time in the
+ * display's 4-bit indexed format. The stored values are the palette indices
+ * of the display.
+ */
+static int write_indexed(const struct display_capabilities *caps)
+{
+	static uint8_t row[DIV_ROUND_UP(CONFIG_IMAGE_PACK_WIDTH, 2)];
+	const struct display_buffer_descriptor desc = {
+		.buf_size = sizeof(row),
+		.width = CONFIG_IMAGE_PACK_WIDTH,
+		.height = 1,
+		.pitch = CONFIG_IMAGE_PACK_WIDTH,
+	};
+
+	if (caps->current_pixel_format != PIXEL_FORMAT_I_4) {
+		LOG_ERR("Display does not take indexed colour");
+		return -ENOTSUP;
+	}
+
+	for (uint16_t y = 0; y < CONFIG_IMAGE_PACK_HEIGHT; y++) {
+		const uint8_t *src = &frame[y * FRAME_STRIDE];
+		int err;
+
+		memset(row, 0, sizeof(row));
+		for (uint16_t x = 0; x < CONFIG_IMAGE_PACK_WIDTH; x++) {
+			uint8_t index = (src[x / 4] >> (6 - 2 * (x % 4))) & 0x3;
+
+			row[x / 2] |= index << ((x & 1) ? 0 : 4);
+		}
+
+		err = display_write(display, 0, y, &desc, row);
+		if (err != 0) {
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static int show_picture(uint16_t index)
+{
 	struct display_capabilities caps;
 	int err;
 
@@ -117,22 +182,7 @@ static int show_picture(uint16_t index)
 		return err;
 	}
 
-	/* Pictures are stored row by row, MSB first, 1 = white. */
 	display_get_capabilities(display, &caps);
-	if ((caps.screen_info & SCREEN_INFO_MONO_VTILED) != 0 ||
-	    (caps.screen_info & SCREEN_INFO_MONO_MSB_FIRST) == 0) {
-		LOG_ERR("Display bit layout is not supported");
-		return -ENOTSUP;
-	}
-
-	if (caps.current_pixel_format == PIXEL_FORMAT_MONO10) {
-		for (size_t i = 0; i < sizeof(frame); i++) {
-			frame[i] = ~frame[i];
-		}
-	} else if (caps.current_pixel_format != PIXEL_FORMAT_MONO01) {
-		LOG_ERR("Display is not monochrome");
-		return -ENOTSUP;
-	}
 
 	/* Write with blanking on so that turning it off does one full refresh. */
 	err = display_blanking_on(display);
@@ -140,7 +190,7 @@ static int show_picture(uint16_t index)
 		return err;
 	}
 
-	err = display_write(display, 0, 0, &desc, frame);
+	err = (CONFIG_IMAGE_PACK_BPP == 1) ? write_mono(&caps) : write_indexed(&caps);
 	if (err != 0) {
 		LOG_ERR("Could not write to the display (%d)", err);
 		return err;
@@ -148,6 +198,7 @@ static int show_picture(uint16_t index)
 
 	err = display_blanking_off(display);
 	if (err != 0 && err != -ENOSYS) {
+		LOG_ERR("Display refresh failed (%d)", err);
 		return err;
 	}
 
@@ -172,9 +223,11 @@ int main(void)
 		return 0;
 	}
 
-	if (info.width != CONFIG_IMAGE_PACK_WIDTH || info.height != CONFIG_IMAGE_PACK_HEIGHT) {
-		LOG_ERR("Pictures are %ux%u, expected %dx%d", info.width, info.height,
-			CONFIG_IMAGE_PACK_WIDTH, CONFIG_IMAGE_PACK_HEIGHT);
+	if (info.width != CONFIG_IMAGE_PACK_WIDTH || info.height != CONFIG_IMAGE_PACK_HEIGHT ||
+	    info.bpp != CONFIG_IMAGE_PACK_BPP) {
+		LOG_ERR("Pictures are %ux%u at %u bpp, expected %dx%d at %d bpp", info.width,
+			info.height, info.bpp, CONFIG_IMAGE_PACK_WIDTH, CONFIG_IMAGE_PACK_HEIGHT,
+			CONFIG_IMAGE_PACK_BPP);
 		return 0;
 	}
 

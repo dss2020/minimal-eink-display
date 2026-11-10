@@ -1,0 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "xiao_despi_c579.dtsi"
+
+&despi_c579_panel {
+	compatible = "gooddisplay,gdey0579f51";
+};

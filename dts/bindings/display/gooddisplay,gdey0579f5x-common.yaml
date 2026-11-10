@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+include: [mipi-dbi-spi-device.yaml, display-controller.yaml]
+
+properties:
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      BUSY pin. The panel drives it low while busy, so it is normally
+      GPIO_ACTIVE_LOW.
+
+  width:
+    default: 792
+
+  height:
+    default: 272

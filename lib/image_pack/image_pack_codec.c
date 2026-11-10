@@ -36,7 +36,7 @@ int image_pack_codec_parse(const uint8_t *pack, size_t pack_len, struct image_pa
 	if (memcmp(pack, "EIPK", 4) != 0) {
 		return -EINVAL;
 	}
-	if (pack[4] != 1U || pack[5] != 1U) {
+	if (pack[4] != 1U || (pack[5] != 1U && pack[5] != 2U)) {
 		return -ENOTSUP;
 	}
 
@@ -63,7 +63,7 @@ size_t image_pack_codec_frame_size(const struct image_pack_info *info)
 		return 0;
 	}
 
-	return (((size_t)info->width + 7U) / 8U) * (size_t)info->height;
+	return (((size_t)info->width * info->bpp + 7U) / 8U) * (size_t)info->height;
 }
 
 static int decode_lzss(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len)

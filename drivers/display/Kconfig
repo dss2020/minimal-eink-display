@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config GDEY0579F5X
+	bool "Good Display GDEY0579F51/F52 four-colour e-paper panels"
+	default y
+	depends on DT_HAS_GOODDISPLAY_GDEY0579F51_ENABLED || DT_HAS_GOODDISPLAY_GDEY0579F52_ENABLED
+	select MIPI_DBI
+	select DISPLAY_COLOR_PALETTE
+	help
+	  Driver for the 5.79 inch 792x272 black/white/yellow/red panels, which
+	  have two cascaded controllers behind one chip select. The driver keeps
+	  a frame buffer of 2 bits per pixel in RAM.

@@ -1,0 +1,12 @@
+shields:
+  - name: xiao_despi_c579_gdey0579f51
+    full_name: Good Display GDEY0579F51 on DESPI-C579, wired to a Seeed XIAO
+    vendor: gooddisplay
+    supported_features:
+      - display
+
+  - name: xiao_despi_c579_gdey0579f52
+    full_name: Good Display GDEY0579F52 on DESPI-C579, wired to a Seeed XIAO
+    vendor: gooddisplay
+    supported_features:
+      - display

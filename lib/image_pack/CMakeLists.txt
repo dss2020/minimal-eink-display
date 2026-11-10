@@ -33,6 +33,12 @@ else()
   set(_fit cover)
 endif()
 
+if(CONFIG_IMAGE_PACK_FORMAT_BWYR)
+  set(_format bwyr)
+else()
+  set(_format mono)
+endif()
+
 if(CONFIG_IMAGE_PACK_DITHER_NONE)
   set(_dither none)
 else()
@@ -51,9 +57,10 @@ add_custom_command(
           --height ${_display_height}
           --fit ${_fit}
           --dither ${_dither}
-          --preview-dir ${CMAKE_CURRENT_BINARY_DIR}/preview
+          --format ${_format}
+          --preview-dir ${CMAKE_BINARY_DIR}/image_preview
   DEPENDS ${_gen_script} ${_pictures}
-  COMMENT "Generating image pack from ${_pictures_dir} (${_display_width}x${_display_height})"
+  COMMENT "Generating image pack from ${_pictures_dir} (${_display_width}x${_display_height}, ${_format})"
   VERBATIM
 )
 
