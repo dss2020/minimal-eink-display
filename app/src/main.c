@@ -11,6 +11,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/retention/retention.h>
@@ -26,6 +27,37 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 static const struct device *const display = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
 static uint8_t frame[FRAME_SIZE];
+
+/*
+ * E-paper drivers start a refresh and return while the panel is still busy.
+ * The panel must not lose its controller mid-refresh, so wait on its busy
+ * line, when the display node has one, before powering off.
+ */
+#define REFRESH_START_MS   100
+#define REFRESH_POLL_MS    20
+#define REFRESH_TIMEOUT_MS 30000
+
+static const struct gpio_dt_spec busy =
+	GPIO_DT_SPEC_GET_OR(DT_CHOSEN(zephyr_display), busy_gpios, {0});
+
+static void wait_refresh_done(void)
+{
+	int64_t end = k_uptime_get() + REFRESH_TIMEOUT_MS;
+
+	if (busy.port == NULL) {
+		return;
+	}
+
+	k_msleep(REFRESH_START_MS);
+
+	while (gpio_pin_get_dt(&busy) > 0) {
+		if (k_uptime_get() > end) {
+			LOG_WRN("Display still busy after %d ms", REFRESH_TIMEOUT_MS);
+			return;
+		}
+		k_msleep(REFRESH_POLL_MS);
+	}
+}
 
 /*
  * Position in the slideshow. Boards that power off between pictures provide
@@ -118,6 +150,8 @@ static int show_picture(uint16_t index)
 	if (err != 0 && err != -ENOSYS) {
 		return err;
 	}
+
+	wait_refresh_done();
 
 	return 0;
 }
