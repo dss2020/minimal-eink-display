@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig IMAGE_PACK
+	bool "Embedded e-ink image pack"
+	help
+	  Convert the pictures in IMAGE_PACK_SOURCE_DIR at build time into a compact
+	  1-bit image pack of IMAGE_PACK_WIDTH x IMAGE_PACK_HEIGHT pixels, link it into the
+	  firmware as read-only data and expose it through <eink/image_pack.h>.
+	  Requires Python with Pillow on the build host.
+
+if IMAGE_PACK
+
+config IMAGE_PACK_WIDTH
+	int "Picture width in pixels"
+	default 0
+	help
+	  Width of the picture as seen by the viewer. Normally set by the
+	  display shield or board.
+
+config IMAGE_PACK_HEIGHT
+	int "Picture height in pixels"
+	default 0
+	help
+	  Height of the picture as seen by the viewer. Normally set by the
+	  display shield or board.
+
+config IMAGE_PACK_SOURCE_DIR
+	string "Source picture folder"
+	default "pictures"
+	help
+	  Folder containing the source JPG/PNG files. A relative path is resolved
+	  against the repository root (the Zephyr module directory); an absolute
+	  path is used as is.
+
+choice IMAGE_PACK_FIT
+	prompt "Picture fitting"
+	default IMAGE_PACK_FIT_COVER
+	help
+	  How pictures with a different aspect ratio are fitted to the display.
+
+config IMAGE_PACK_FIT_COVER
+	bool "Cover (scale and crop)"
+	help
+	  Scale the picture to fill the whole display, cropping the overflow.
+
+config IMAGE_PACK_FIT_CONTAIN
+	bool "Contain (scale and letterbox)"
+	help
+	  Scale the picture to fit entirely inside the display, padding the
+	  remaining area with white.
+
+endchoice # IMAGE_PACK_FIT
+
+choice IMAGE_PACK_DITHER
+	prompt "Dithering"
+	default IMAGE_PACK_DITHER_FS
+	help
+	  How pictures are reduced to 1 bit per pixel.
+
+config IMAGE_PACK_DITHER_FS
+	bool "Floyd-Steinberg"
+	help
+	  Use Floyd-Steinberg error diffusion, which preserves tonal detail.
+
+config IMAGE_PACK_DITHER_NONE
+	bool "None (threshold)"
+	help
+	  Use a plain threshold without dithering.
+
+endchoice # IMAGE_PACK_DITHER
+
+module = IMAGE_PACK
+module-str = image_pack
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # IMAGE_PACK

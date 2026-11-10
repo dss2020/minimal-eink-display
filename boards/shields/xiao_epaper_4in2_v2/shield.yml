@@ -1,0 +1,6 @@
+shields:
+  - name: xiao_epaper_4in2_v2
+    full_name: Waveshare 4.2inch e-Paper Module V2 (SSD1683) on Seeed XIAO
+    vendor: waveshare
+    supported_features:
+      - display

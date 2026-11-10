@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Slideshow application"
+
+config APP_SLIDE_INTERVAL_SEC
+	int "Time each picture is shown, in seconds"
+	default 300
+	range 5 86400
+
+config APP_DEEP_SLEEP
+	bool "Power off between pictures"
+	default y
+	depends on TIMED_POWEROFF
+	help
+	  Power the SoC off after each refresh and wake it with a timer for
+	  the next picture. Disable to stay awake instead, which keeps the
+	  USB console connected while debugging.
+
+endmenu
+
+source "Kconfig.zephyr"

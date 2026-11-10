@@ -1,0 +1,21 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Slideshow position, kept in LP RAM so it survives deep sleep.
+ */
+
+/ {
+	aliases {
+		slideshow-state = &slideshow_state;
+	};
+};
+
+&retainedmem0 {
+	slideshow_state: retention@0 {
+		compatible = "zephyr,retention";
+		status = "okay";
+		reg = <0x0 0x10>;
+		prefix = [45 49];
+		checksum = <2>;
+	};
+};

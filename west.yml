@@ -1,0 +1,24 @@
+# West manifest for the minimal e-ink display project.
+#
+# Only Zephyr itself and the Espressif HAL are fetched. Add a module name to
+# the allowlist below only when a build actually needs it.
+#
+# Workspace setup (run from the directory that contains this repository):
+#   west init -l minimal-eink-display
+#   west update --narrow -o=--depth=1
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.5.0
+      import:
+        name-allowlist:
+          - hal_espressif
+
+  self:
+    path: minimal-eink-display

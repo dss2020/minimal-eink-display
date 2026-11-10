@@ -1,0 +1,6 @@
+name: minimal-eink-display
+build:
+  cmake: .
+  kconfig: Kconfig
+  settings:
+    board_root: .

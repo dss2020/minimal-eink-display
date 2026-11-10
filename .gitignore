@@ -1,0 +1,16 @@
+# Source pictures are personal content, only the README is tracked
+/pictures/*
+!/pictures/README.md
+
+# Build output
+build/
+/app/build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

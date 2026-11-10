@@ -1,0 +1,55 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Waveshare 4.2inch e-Paper Module V2 (400x300, black/white, SSD1683) wired
+ * to a Seeed XIAO header:
+ *
+ *   CLK  -> D8  (SPI SCK)
+ *   DIN  -> D10 (SPI MOSI)
+ *   CS   -> D3
+ *   DC   -> D2
+ *   RST  -> D1
+ *   BUSY -> D0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	chosen {
+		zephyr,display = &epaper_4in2_v2;
+	};
+
+	mipi_dbi_epaper_4in2_v2 {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&xiao_spi>;
+		dc-gpios = <&xiao_d 2 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&xiao_d 1 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		epaper_4in2_v2: ssd1683@0 {
+			compatible = "solomon,ssd1683";
+			reg = <0>;
+			mipi-max-frequency = <4000000>;
+			/*
+			 * The ssd16xx driver takes width as the gate count and
+			 * height as the source count. A rotation of 270 degrees
+			 * gives the 400x300 landscape view with row-major data.
+			 */
+			width = <300>;
+			height = <400>;
+			rotation = <270>;
+			busy-gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
+
+			/* Empty profile: use the waveform stored in the panel's OTP. */
+			full {
+			};
+		};
+	};
+};
+
+&xiao_spi {
+	status = "okay";
+	cs-gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+};

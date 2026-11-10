@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_XIAO_EPAPER_4IN2_V2
+
+# Size of the picture as seen by the viewer (landscape).
+config IMAGE_PACK_WIDTH
+	default 400
+
+config IMAGE_PACK_HEIGHT
+	default 300
+
+endif # SHIELD_XIAO_EPAPER_4IN2_V2

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config TIMED_POWEROFF
+	bool "Timed power-off"
+	depends on HAS_POWEROFF
+	depends on SOC_FAMILY_ESPRESSIF_ESP32
+	select POWEROFF
+	help
+	  Provide timed_poweroff(), which puts the SoC into its lowest power
+	  state and restarts it after a given delay. RAM contents are lost
+	  apart from retained memory.
+
+	  Only an Espressif ESP32 backend (deep sleep with RTC timer wake-up)
+	  exists so far. Add a backend source file and extend the dependency
+	  above to support another SoC family.

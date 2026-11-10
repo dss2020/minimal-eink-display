@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Minimal e-ink display"
+
+rsource "lib/Kconfig"
+
+endmenu
