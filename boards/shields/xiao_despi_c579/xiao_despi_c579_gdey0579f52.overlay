@@ -6,4 +6,10 @@
 
 &despi_c579_panel {
 	compatible = "gooddisplay,gdey0579f52";
+	/*
+	 * About 12 s per refresh instead of about 20 s. For the full
+	 * waveform, add "/delete-property/ fast-refresh;" to this node in an
+	 * application overlay.
+	 */
+	fast-refresh;
 };
