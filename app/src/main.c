@@ -6,13 +6,17 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/fs/nvs.h>
+#include <zephyr/storage/flash_map.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/retention/retention.h>
@@ -62,25 +66,26 @@ static void wait_refresh_done(void)
 }
 
 /*
- * Position in the slideshow. Boards that power off between pictures provide
- * a "slideshow-state" retention area; otherwise it only has to live in RAM.
+ * Position in the slideshow. Two copies are kept:
+ *  - a "slideshow-state" retention area (LP RAM) that survives the power-off
+ *    between pictures without any flash wear, and
+ *  - a flash copy in the storage partition, which also survives a full power
+ *    loss. It is only read when the retention area is invalid.
+ * Either may be absent on a given board; the position then only lives in the
+ * other one, or in RAM.
  */
+static uint32_t ram_index;
+
 #if DT_HAS_ALIAS(slideshow_state)
 static const struct device *const state_dev = DEVICE_DT_GET(DT_ALIAS(slideshow_state));
 
-static uint32_t state_load(void)
+static bool retention_load(uint32_t *index)
 {
-	uint32_t index;
-
-	if (!device_is_ready(state_dev) || retention_is_valid(state_dev) != 1 ||
-	    retention_read(state_dev, 0, (uint8_t *)&index, sizeof(index)) != 0) {
-		return 0;
-	}
-
-	return index;
+	return device_is_ready(state_dev) && retention_is_valid(state_dev) == 1 &&
+	       retention_read(state_dev, 0, (uint8_t *)index, sizeof(*index)) == 0;
 }
 
-static void state_save(uint32_t index)
+static void retention_save(uint32_t index)
 {
 	int err = retention_write(state_dev, 0, (const uint8_t *)&index, sizeof(index));
 
@@ -89,18 +94,105 @@ static void state_save(uint32_t index)
 	}
 }
 #else
-static uint32_t ram_index;
+static bool retention_load(uint32_t *index)
+{
+	return false;
+}
+
+static void retention_save(uint32_t index)
+{
+}
+#endif
+
+#if CONFIG_NVS && FIXED_PARTITION_EXISTS(storage_partition)
+#define STATE_NVS_ID 1
+
+static struct nvs_fs nvs = {
+	.flash_device = FIXED_PARTITION_DEVICE(storage_partition),
+	.offset = FIXED_PARTITION_OFFSET(storage_partition),
+};
+static bool nvs_ok;
+
+static void nvs_state_init(void)
+{
+	struct flash_pages_info page;
+	int err;
+
+	if (!device_is_ready(nvs.flash_device)) {
+		LOG_WRN("Flash is not ready, position is not kept across power loss");
+		return;
+	}
+
+	err = flash_get_page_info_by_offs(nvs.flash_device, nvs.offset, &page);
+	if (err != 0) {
+		LOG_WRN("Could not get flash page info (%d)", err);
+		return;
+	}
+
+	nvs.sector_size = page.size;
+	nvs.sector_count = FIXED_PARTITION_SIZE(storage_partition) / page.size;
+
+	err = nvs_mount(&nvs);
+	if (err != 0) {
+		LOG_WRN("Could not mount storage (%d), position is not kept across power loss",
+			err);
+		return;
+	}
+
+	nvs_ok = true;
+}
+
+static bool nvs_load(uint32_t *index)
+{
+	return nvs_ok && nvs_read(&nvs, STATE_NVS_ID, index, sizeof(*index)) == sizeof(*index);
+}
+
+static void nvs_save(uint32_t index)
+{
+	int err;
+
+	if (!nvs_ok) {
+		return;
+	}
+
+	/* NVS skips the write when the stored value is identical. */
+	err = nvs_write(&nvs, STATE_NVS_ID, &index, sizeof(index));
+	if (err < 0) {
+		LOG_WRN("Could not store slideshow position in flash (%d)", err);
+	}
+}
+#else
+static void nvs_state_init(void)
+{
+}
+
+static bool nvs_load(uint32_t *index)
+{
+	return false;
+}
+
+static void nvs_save(uint32_t index)
+{
+}
+#endif
 
 static uint32_t state_load(void)
 {
+	uint32_t index;
+
+	if (retention_load(&index) || nvs_load(&index)) {
+		return index;
+	}
+
 	return ram_index;
 }
 
 static void state_save(uint32_t index)
 {
 	ram_index = index;
+	retention_save(index);
+	nvs_save(index);
 }
-#endif
 
 /* Monochrome picture: one write of the whole frame. */
 static int write_mono(const struct display_capabilities *caps)
@@ -230,6 +322,8 @@ int main(void)
 			CONFIG_IMAGE_PACK_BPP);
 		return 0;
 	}
+
+	nvs_state_init();
 
 	while (true) {
 		uint32_t index = state_load() % info.count;
