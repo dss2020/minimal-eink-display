@@ -85,6 +85,7 @@ Set in `app/prj.conf` or on the command line (`-- -DCONFIG_...=...`).
 | `CONFIG_IMAGE_PACK_SOURCE_DIR` | `pictures` | Source folder, relative to the repository root |
 | `CONFIG_IMAGE_PACK_FIT_COVER` / `_CONTAIN` | cover | Crop to fill, or letterbox |
 | `CONFIG_IMAGE_PACK_DITHER_FS` / `_NONE` | Floyd-Steinberg | Dithering |
+| `CONFIG_IMAGE_PACK_ROTATE_180` | n | Turn pictures upside down, for a panel mounted the other way up |
 
 ## Layout
 

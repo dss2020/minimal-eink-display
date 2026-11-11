@@ -345,6 +345,8 @@ def main() -> int:
     ap.add_argument("--dither", choices=("fs", "none"), default="fs")
     ap.add_argument("--format", choices=tuple(FORMAT_BPP), default="mono",
                     help="mono: 1 bpp black/white; bwyr: 2 bpp black/white/yellow/red")
+    ap.add_argument("--rotate-180", action="store_true",
+                    help="turn the pictures upside down, for a panel mounted the other way up")
     ap.add_argument("--preview-dir", type=Path)
     a = ap.parse_args()
     if not (0 < a.width <= 0xFFFF and 0 < a.height <= 0xFFFF):
@@ -371,7 +373,9 @@ def main() -> int:
             return 1
         names.append(p.stem)
 
-    frames = [frame_bytes(b) for b in bws]
+    # Previews keep the viewer's orientation; only the stored frames are turned.
+    frames = [frame_bytes(b.transpose(Image.Transpose.ROTATE_180) if a.rotate_180 else b)
+              for b in bws]
     bpp = FORMAT_BPP[a.format]
     pack, sizes = build_pack(frames, a.width, a.height, bpp)
     a.output.parent.mkdir(parents=True, exist_ok=True)

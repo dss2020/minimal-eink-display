@@ -45,6 +45,11 @@ else()
   set(_dither fs)
 endif()
 
+set(_rotate_arg)
+if(CONFIG_IMAGE_PACK_ROTATE_180)
+  set(_rotate_arg --rotate-180)
+endif()
+
 set(_pack_bin ${CMAKE_CURRENT_BINARY_DIR}/image_pack.bin)
 set(_gen_script ${_repo_root}/scripts/gen_image_pack.py)
 
@@ -58,6 +63,7 @@ add_custom_command(
           --fit ${_fit}
           --dither ${_dither}
           --format ${_format}
+          ${_rotate_arg}
           --preview-dir ${CMAKE_BINARY_DIR}/image_preview
   DEPENDS ${_gen_script} ${_pictures}
   COMMENT "Generating image pack from ${_pictures_dir} (${_display_width}x${_display_height}, ${_format})"

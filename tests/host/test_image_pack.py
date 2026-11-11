@@ -123,6 +123,20 @@ def test_packs(tmp: Path) -> list[tuple[Path, int, int]]:
         r2 = run_gen(imgs, tmp / "opt.bin", w, h, "--format", fmt, "--fit", "contain",
                      "--dither", "none")
         check(f"{w}x{h} contain/none exit 0", r2.returncode == 0, r2.stderr.strip())
+        # --rotate-180 stores every frame upside down
+        rot = tmp / "rot.bin"
+        r3 = run_gen(imgs, rot, w, h, "--format", fmt, "--rotate-180")
+        check(f"{w}x{h} rotate-180 exit 0", r3.returncode == 0, r3.stderr.strip())
+        if r3.returncode == 0 and (w * bpp) % 8 == 0:
+            # Without row padding, turning the frame is reversing its pixel order.
+            ppb = 8 // bpp
+            def px(data):
+                return [(byte >> (8 - bpp * (k + 1))) & ((1 << bpp) - 1)
+                        for byte in data for k in range(ppb)]
+            rpack = rot.read_bytes()
+            ok = all(px(gip.decode_pack_frame(rpack, i)) ==
+                     px(gip.decode_pack_frame(pack, i))[::-1] for i in range(4))
+            check(f"{w}x{h} rotate-180 frames are the originals reversed", ok)
         packs.append((out, w, h))
     return packs
 

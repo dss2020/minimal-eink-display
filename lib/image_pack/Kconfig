@@ -91,6 +91,13 @@ config IMAGE_PACK_DITHER_NONE
 
 endchoice # IMAGE_PACK_DITHER
 
+config IMAGE_PACK_ROTATE_180
+	bool "Rotate pictures by 180 degrees"
+	help
+	  Turn every picture upside down, for a panel mounted the other way
+	  up (with its connector on the opposite side). Done at build time, so
+	  it costs nothing at run time.
+
 module = IMAGE_PACK
 module-str = image_pack
 source "subsys/logging/Kconfig.template.log_config"
