@@ -37,6 +37,16 @@
 			busy-gpios = <&xiao_d 0 GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	/* Keep the panel's inputs defined while the SoC is powered off. */
+	poweroff_hold {
+		compatible = "timed-poweroff-hold";
+		gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>,   /* CS */
+			<&xiao_d 1 GPIO_ACTIVE_LOW>,   /* reset */
+			<&xiao_d 2 GPIO_ACTIVE_HIGH>,  /* D/C */
+			<&xiao_d 8 GPIO_ACTIVE_HIGH>,  /* SCK */
+			<&xiao_d 10 GPIO_ACTIVE_HIGH>; /* MOSI */
+	};
 };
 
 &xiao_spi {

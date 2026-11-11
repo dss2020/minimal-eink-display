@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Pins that timed_poweroff() drives to their inactive level and keeps there
+  while the system is powered off, so that devices wired to them do not see
+  floating inputs. The pins are released again at the next boot.
+
+  Give each pin the same active level as its normal use: an active-low chip
+  select or reset line is then held high.
+
+compatible: "timed-poweroff-hold"
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
