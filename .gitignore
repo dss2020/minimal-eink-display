@@ -1,5 +1,6 @@
 # Source pictures are personal content, only the README is tracked
 /pictures/*
+/pictures-*/
 !/pictures/README.md
 
 # Build output
